@@ -1,30 +1,82 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
+import cors from 'cors'
 
 const app = express();
 const prisma = new PrismaClient()//Conexão com o banco
 
-app.get('/ads', (req, res) => {
-    return res.json([])
+app.use(express.json())
+app.use(cors())
+
+app.get('/ads/:id/discord', async(req, res) => {
+    const adId = req.params.id;
+
+    const ad = await prisma.ad.findMany({
+        select: {
+            discord: true
+        },
+        where: {
+            id: adId
+        }
+    })
+    return res.json(ad)
 })
 
-app.post('/ads', (req, res) => {
-    return res.status(201).json([])
+
+app.get('/games', async(req, res) => {
+
+    const games = await prisma.game.findMany({
+        include: {
+            _count: {
+                select: {
+                    ads: true
+                }
+            }
+        }
+    })
+
+    return res.json(games)
 })
 
-app.get('/games', (req, res) => {
+app.get('/games/:id/ads', async(req, res) => {
+    const gameId = req.params.id;
 
-    return res.json([
-        
-        {"id": 1, "name": "Guilherme", "idade": 23},
-        {"id": 2, "name": "Guilherme", "idade": 23},
-        {"id": 3, "name": "Guilherme", "idade": 23},
-        {"id": 4, "name": "Guilherme", "idade": 23},
-    ])
+    const ads = await prisma.ad.findMany({
+        select: {
+            id: true,
+            name: true,
+            weekDays: true,
+            useVoiceChannel: true,
+            yersPlaying: true,
+            hourStart: true,
+            hourEnd: true,
+        },
+        where: {
+            gameId: gameId
+        },
+        orderBy: {
+            createdAt: 'desc'
+        }
+    })
+    return res.json(ads)
 })
 
-app.get('/ads/:id/discord', (req, res) => {
-    return res.json([])
+app.post('/games/:id/ads', async(req, res) => {
+    const gameId = req.params.id;
+    const body = req.body;
+    const ad = await prisma.ad.create({
+        data: {
+            gameId,
+            name: body.name,
+            yersPlaying: body.yersPlaying,
+            discord: body.discord,
+            weekDays: body.weekDays,
+            hourStart: body.hourStart,
+            hourEnd: body.hourEnd,
+            useVoiceChannel: body.useVoiceChannel
+        }
+    })
+    return res.status(200).json(ad)
 })
 
 app.listen(3000);
